@@ -15,7 +15,7 @@ from message_ix import Scenario
 storage_in_java = False
 
 
-# A function for generating a simple MESSAGEix model
+# A function for generating a simple MESSAGEix model with two technologies
 def model_setup(scen, years):
     scen.add_set('node', 'node')
     scen.add_set('commodity', 'electr')
@@ -199,10 +199,10 @@ def test_storage(test_mp):
     # Or, activity of expensive technology should be lower with storage
     assert act_with < act_no
 
-    # I.2. Activity of discharger should be always =< activity of charger
+    # I.2. Activity of discharger should be always <= activity of charger
     act_pump = scen.var('ACT', {'technology': 'pump'})['lvl']
     act_turb = scen.var('ACT', {'technology': 'turbine'})['lvl']
-    assert act_turb.sum() < act_pump.sum()
+    assert act_turb.sum() <= act_pump.sum()
 
     # I.3. Max activity of charger is lower than storage capacity
     max_pump = max(act_pump)
