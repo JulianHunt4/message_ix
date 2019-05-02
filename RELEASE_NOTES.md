@@ -6,6 +6,7 @@
 - [#154](https://github.com/iiasa/message_ix/pull/154): Enable documentation build on ReadTheDocs.
 - [#138](https://github.com/iiasa/message_ix/pull/138): Update documentation and tutorials.
 - [#131](https://github.com/iiasa/message_ix/pull/131): Update clone function argument `scen` to `scenario` with planned deprecation of the former.
+- [#190](https://github.com/iiasa/message_ix/pull/190): Storage equations in GAMS, unit test, and documentation
 
 # v1.1.0
 
@@ -120,4 +121,3 @@ jdbc.pwd = ixmp
 - [#60](https://github.com/iiasa/message_ix/pull/60): Add basic ability to write and read model input to/from Excel
 - [#59](https://github.com/iiasa/message_ix/pull/59): Added MacOSX CI support
 - [#187](https://github.com/iiasa/message_ix/pull/187): Test for cumulative bound on emissions
-- [#190](https://github.com/iiasa/message_ix/pull/190): Storage equations in GAMS, unit test, and documentation
