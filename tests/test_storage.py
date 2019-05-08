@@ -8,7 +8,7 @@ testing the functionality of storage equations. The workflow is as follows:
     - testing storage functionality and equations
 
 """
-
+# adding some changes
 from message_ix import Scenario
 from itertools import product
 
