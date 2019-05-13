@@ -18,7 +18,7 @@ $LOAD inv_tec, renewable_tec
 $LOAD shares
 $LOAD addon, type_addon, cat_addon, map_tec_addon
 * Added for storage
-$LOAD storage_tec, level_storage, map_tec_storage
+$LOAD storage_tec, level_storage, map_tec_storage, relation_storage
 $GDXIN
 
 Execute_load '%in%'
