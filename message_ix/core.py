@@ -1,24 +1,64 @@
 import collections
+import copy
 import ixmp
 import itertools
+import os
 import warnings
 
 import pandas as pd
 import numpy as np
 
+from message_ix import default_paths
+
 from ixmp.utils import pd_read, pd_write
 from message_ix.utils import isscalar, logger
+
+DEFAULT_SOLVE_OPTIONS = {
+    'advind': 0,
+    'lpmethod': 2,
+    'threads': 4,
+    'epopt': 1e-6,
+}
+
+
+def init_storage(scen, *args, **kwargs):
+    # Initiating a set to specifiy storage level (no commodity balance needed)
+    scen.init_set('level_storage')
+
+    # Initiating a set to specifiy storage reservoir technology
+    scen.init_set('storage_tec')
+
+    # Initiating a set to map storage reservoir to its charger/discharger
+    scen.init_set('map_tec_storage', idx_sets=['technology', 'storage_tec'])
+
+    # Initiating a parameter to specify the order of sub-annual time steps
+    scen.init_par('time_seq', idx_sets=['time'])
+
+    # Initiating a parameter for relating the content f storage in two
+    # different time steps (in even in two periods) together
+    scen.init_par('relation_storage',
+                  idx_sets=['node', 'technology', 'level', 'year', 'year',
+                            'time', 'time'],
+                  idx_names=['node', 'technology', 'level', 'year_first',
+                             'year_last', 'time_first', 'time_last'])
+
+    # Initiating two parameters for specifying lower and upper bounds of
+    # storage reservoir, and storage losses all as % of installed capacity
+    # (values should be between 0 and 1)
+    par_stor = ['bound_storage_lo', 'bound_storage_up', 'storage_loss']
+    for parname in par_stor:
+        scen.init_par(parname, idx_sets=['node', 'technology',
+                                         'level', 'year', 'time'])
 
 
 def _init_scenario(s, commit=False):
     """Initialize a MESSAGEix Scenario object with default values"""
     inits = (
-        # {
-        #  'test': False  # some test,
-        #  'exec': [(pass, {'args': ()}), ],
-        # },
+        {
+            'test': 'level_storage' not in s.set_list(),
+            'exec': [(init_storage, {'args': (s,)}), ],
+        },
     )
-
     pass_idx = [i for i, init in enumerate(inits) if init['test']]
     if len(pass_idx) == 0:
         return  # leave early, all init tests pass
@@ -272,8 +312,18 @@ class Scenario(ixmp.Scenario):
         v_years, a_years = zip(*year_pairs)
         return pd.DataFrame({'year_vtg': v_years, 'year_act': a_years})
 
-    def solve(self, model='MESSAGE', **kwargs):
+    def solve(self, model='MESSAGE', solve_options={}, **kwargs):
         """Solve the Scenario.
+
+        Parameters
+        ----------
+        model : string
+            the type of model to solve (e.g., MESSAGE or MESSAGE-MACRO)
+        solve_options : dict
+            name, value pairs to use for GAMS solver optfile,
+            see `message_ix.DEFAULT_SOLVE_OPTIONS` for defaults and see
+            https://www.gams.com/latest/docs/S_CPLEX.html for possible
+            arguments
 
         By default, :meth:`ixmp.Scenario.solve` is called with "MESSAGE" as the
         *model* argument; see the documentation of that method for other
@@ -282,44 +332,21 @@ class Scenario(ixmp.Scenario):
         >>> s.solve(model='MESSAGE-MACRO')
 
         """
-        return super(Scenario, self).solve(model=model, **kwargs)
-
-    def clone(self, model=None, scenario=None, annotation=None,
-              keep_solution=True, first_model_year=None, **kwargs):
-        """clone the current scenario and return the new scenario
-
-        Parameters
-        ----------
-        model : string
-            new model name
-        scenario : string
-            new scenario name
-        annotation : string
-            explanatory comment (optional)
-        keep_solution : boolean, default, True
-            indicator whether to include an existing solution
-            in the cloned scenario
-        first_model_year: int, default None
-            new first model year in cloned scenario
-            ('slicing', only available for MESSAGE-scheme scenarios)
-        """
-        if 'keep_sol' in kwargs:
-            warnings.warn(
-                '`keep_sol` is deprecated and will be removed in the next' +
-                ' release, please use `keep_solution`')
-            keep_solution = kwargs.pop('keep_sol')
-        if 'scen' in kwargs:
-            warnings.warn(
-                '`scen` is deprecated and will be removed in the next' +
-                ' release, please use `scenario`')
-            scenario = kwargs.pop('scen')
-
-        self._keep_sol = keep_solution
-        self._first_model_year = first_model_year or 0
-        model = self.model if not model else model
-        scenario = self.scenario if not scenario else scenario
-        return Scenario(self.platform, model, scenario, annotation=annotation,
-                        cache=self._cache, clone=self)
+        # TODO: we generate the cplex.opt file on the fly. this is *not* safe
+        # agaisnt race conditions. It is possible to generate opt files with
+        # random names (see
+        # https://www.gams.com/latest/docs/UG_GamsCall.html#GAMSAOoptfile);
+        # however, we need to clean up the code in ixmp that passes arguments
+        # to gams to do so.
+        fname = os.path.join(default_paths.model_path(), 'cplex.opt')
+        opts = copy.deepcopy(DEFAULT_SOLVE_OPTIONS)
+        opts.update(solve_options)
+        lines = '\n'.join('{} = {}'.format(k, v) for k, v in opts.items())
+        with open(fname, 'w') as f:
+            f.writelines(lines)
+        ret = super(Scenario, self).solve(model=model, **kwargs)
+        os.remove(fname)
+        return ret
 
     def rename(self, name, mapping, keep=False):
         """Rename an element in a set
