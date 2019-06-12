@@ -195,3 +195,13 @@ def test_storage(test_mp):
 
     time_duration = {'a': 0.3, 'b': 0.25, 'c': 0.25, 'd': 0.2}
     storage_setup(test_mp, time_duration, '_inequal_time')
+    
+import ixmp
+
+test_mp = ixmp.Platform(dbprops=r'C:/Users/hunt/.local/ixmp/localdb/default (correct one to change) - Copy (2).properties')
+test_storage(test_mp)
+
+import message_ix
+message_ix.__file__
+    
+#%%
